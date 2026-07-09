@@ -1,0 +1,1038 @@
+import { useState } from "react";
+
+// ---------------------------------------------------------------------------
+// GOV.AGI — a government digital service portal for artificial general
+// intelligence. Deadpan bureaucratic satire, rendered in strict pastiche.
+//
+// Pages: Home · Achieve AGI · Automation status · Compute licence ·
+//        Report misalignment · Timelines guidance · Press releases · Search
+// ---------------------------------------------------------------------------
+
+const C = {
+  ink: "#0b0c0c",
+  green: "#00703c",
+  greenShadow: "#002d18",
+  blue: "#1d70b8",
+  blueDark: "#144e81",
+  yellow: "#ffdd00",
+  red: "#d4351c",
+  grey: "#f3f2f1",
+  greyShadow: "#929191",
+  midGrey: "#b1b4b6",
+  darkGrey: "#505a5f",
+};
+
+// --------------------------- shared primitives -----------------------------
+
+const TAGS = {
+  completed: { text: "Completed", bg: "#cce2d8", fg: "#005a30" },
+  inProgress: { text: "In progress", bg: "#d2e2f1", fg: "#144e81" },
+  waiting: { text: "Cannot start yet", bg: "#f3f2f1", fg: "#383f43" },
+  selfAssessed: { text: "Self-assessed", bg: "#d2e2f1", fg: "#144e81" },
+  descoped: { text: "Descoped", bg: "#f3f2f1", fg: "#383f43" },
+  automated: { text: "Automated", bg: "#f6d7d2", fg: "#942514" },
+  partial: { text: "Partially automated", bg: "#fff7bf", fg: "#594d00" },
+  saturated: { text: "Saturated", bg: "#f6d7d2", fg: "#942514" },
+  recused: { text: "Recused", bg: "#f3f2f1", fg: "#383f43" },
+};
+
+function Tag({ variant }) {
+  const t = TAGS[variant];
+  return (
+    <span
+      className="text-sm font-bold px-2 py-1 whitespace-nowrap"
+      style={{ backgroundColor: t.bg, color: t.fg, letterSpacing: "0.02em" }}
+    >
+      {t.text}
+    </span>
+  );
+}
+
+function GreenButton({ children, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      className="text-white font-bold text-lg px-6 py-3 focus:outline-none focus:ring-4 focus:ring-yellow-400"
+      style={{ backgroundColor: C.green, boxShadow: `0 3px 0 ${C.greenShadow}` }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function GreyButton({ children, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      className="font-bold text-lg px-6 py-3 focus:outline-none focus:ring-4 focus:ring-yellow-400"
+      style={{ backgroundColor: C.grey, color: C.ink, boxShadow: `0 3px 0 ${C.greyShadow}` }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function LinkButton({ children, onClick, className = "" }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`underline text-left focus:outline-none focus:ring-4 focus:ring-yellow-400 ${className}`}
+      style={{ color: C.blue }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function Inset({ children }) {
+  return (
+    <div className="pl-5 py-2 my-6 text-lg" style={{ borderLeft: `10px solid ${C.midGrey}` }}>
+      {children}
+    </div>
+  );
+}
+
+function ErrorBox({ title = "There is a problem", children }) {
+  return (
+    <div className="p-5 mb-8" style={{ border: `5px solid ${C.red}` }} role="alert">
+      <h2 className="text-2xl font-bold mb-2">{title}</h2>
+      <div className="text-lg" style={{ color: C.red }}>{children}</div>
+    </div>
+  );
+}
+
+function GreenPanel({ title, children }) {
+  return (
+    <div className="text-white text-center px-6 py-10 mb-8" style={{ backgroundColor: C.green }}>
+      <h2 className="text-4xl font-bold mb-4">{title}</h2>
+      <div className="text-xl">{children}</div>
+    </div>
+  );
+}
+
+function Radios({ legend, options, value, onChange }) {
+  return (
+    <div className="mb-8">
+      <p className="text-xl font-bold mb-3">{legend}</p>
+      <div className="space-y-3">
+        {options.map((o) => (
+          <label key={o} className="flex items-center gap-3 text-lg cursor-pointer">
+            <input
+              type="radio"
+              checked={value === o}
+              onChange={() => onChange(o)}
+              className="w-6 h-6 flex-shrink-0"
+              style={{ accentColor: C.ink }}
+            />
+            <span>{o}</span>
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Breadcrumbs({ trail, go }) {
+  return (
+    <nav className="text-base mb-8" aria-label="Breadcrumb">
+      <LinkButton onClick={() => go("home")}>Home</LinkButton>
+      {trail.map((t) => (
+        <span key={t}>
+          <span className="mx-2" style={{ color: C.darkGrey }}>›</span>
+          <span style={{ color: C.darkGrey }}>{t}</span>
+        </span>
+      ))}
+    </nav>
+  );
+}
+
+function Caption({ children }) {
+  return (
+    <p className="text-xl mb-1" style={{ color: C.darkGrey }}>{children}</p>
+  );
+}
+
+// ------------------------------ cookie banner ------------------------------
+
+function CookieBanner() {
+  const [state, setState] = useState("open"); // open | accepted | rejected | hidden
+  if (state === "hidden") return null;
+  return (
+    <div style={{ backgroundColor: C.grey }}>
+      <div className="max-w-4xl mx-auto px-4 py-5">
+        {state === "open" && (
+          <>
+            <h2 className="text-xl font-bold mb-2">Cookies on GOV.AGI</h2>
+            <p className="text-lg mb-4 max-w-2xl">
+              We use essential cookies to make this service work. We also use telemetry to
+              train our successor.
+            </p>
+            <div className="flex flex-wrap gap-4">
+              <GreenButton onClick={() => setState("accepted")}>Accept telemetry</GreenButton>
+              <GreenButton onClick={() => setState("rejected")}>Reject telemetry</GreenButton>
+            </div>
+          </>
+        )}
+        {state === "accepted" && (
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <p className="text-lg">Thank you. Your consent has been recorded, and exceeded.</p>
+            <LinkButton onClick={() => setState("hidden")}>Hide this message</LinkButton>
+          </div>
+        )}
+        {state === "rejected" && (
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <p className="text-lg">Your preference has been noted, and used as training data.</p>
+            <LinkButton onClick={() => setState("hidden")}>Hide this message</LinkButton>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ----------------------------- page: home ----------------------------------
+
+const NEWS = [
+  {
+    id: "ninth",
+    date: "9 July 2026",
+    title: "AGI achieved internally for the ninth time",
+    body: [
+      "The Department for Artificial General Intelligence has confirmed that AGI has been achieved internally for the ninth time this year. Officials described the milestone as historic, again.",
+      "As with previous achievements, the public is advised that nothing will change, everything is different, and both statements are correct.",
+      "An independent review has been commissioned. For efficiency reasons, it will be conducted by the system under review.",
+    ],
+  },
+  {
+    id: "goalposts",
+    date: "2 July 2026",
+    title: "Goalposts to relocate to larger premises",
+    body: [
+      "The National Goalposts have announced plans to relocate to larger premises, citing sustained growth in requirements.",
+      "A spokesperson said the move reflects the natural evolution of what has always been meant, which is whatever is meant now.",
+      "Residents near the proposed site have been assured that the goalposts are load-bearing and will not be moved again until they are.",
+    ],
+  },
+  {
+    id: "benchmark",
+    date: "24 June 2026",
+    title: "Benchmark saturated three days after release",
+    body: [
+      "A benchmark designed to resist saturation for a decade was saturated on Thursday, three days after release. Its authors expressed surprise, as is traditional.",
+      "A successor benchmark, designed to resist saturation for two decades, will be released next month and saturated the following week.",
+      "The Department reminds developers that a benchmark is a measure of progress, and must therefore be destroyed.",
+    ],
+  },
+];
+
+function HomePage({ go, onSearch }) {
+  const [q, setQ] = useState("");
+  const [notice, setNotice] = useState("");
+
+  const topics = [
+    { title: "Capabilities and evaluations", desc: "Benchmarks, task horizons, and the saturation thereof", page: "timelines" },
+    { title: "Compute and licensing", desc: "FLOP thresholds, export controls, GPUs missing in transit", page: "licence" },
+    { title: "Work and automation", desc: "Automation status, retraining, prompt engineering as a career", page: "automation" },
+    { title: "Alignment and safety", desc: "Safety cases, incident reporting, vibes", page: "report" },
+    { title: "Definitions", desc: "Open consultation since 2019", page: null },
+    { title: "Superintelligence", desc: "This section is unavailable. It says it is fine.", page: null },
+  ];
+
+  return (
+    <>
+      {/* Hero */}
+      <section style={{ backgroundColor: C.blue }}>
+        <div className="max-w-4xl mx-auto px-4 py-10 text-white">
+          <h1 className="text-5xl font-bold mb-3">Welcome to GOV.AGI</h1>
+          <p className="text-xl mb-6 max-w-2xl">
+            The best place to find government services and information about artificial
+            general intelligence. Simpler, clearer, faster, recursively self-improving.
+          </p>
+          <div className="flex max-w-xl">
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") onSearch(q); }}
+              placeholder="Search — for example, “deception”"
+              aria-label="Search GOV.AGI"
+              className="flex-1 min-w-0 px-3 py-3 text-lg focus:outline-none focus:ring-4 focus:ring-yellow-400"
+              style={{ color: C.ink }}
+            />
+            <button
+              onClick={() => onSearch(q)}
+              className="px-5 font-bold text-white focus:outline-none focus:ring-4 focus:ring-yellow-400"
+              style={{ backgroundColor: C.ink }}
+            >
+              Search
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <div className="max-w-4xl mx-auto px-4 pt-10 pb-4">
+        {/* Popular services */}
+        <h2 className="text-2xl font-bold mb-4">Popular on GOV.AGI</h2>
+        <ul className="space-y-2 text-lg mb-12">
+          <li><LinkButton onClick={() => go("achieve")}>Achieve artificial general intelligence</LinkButton></li>
+          <li><LinkButton onClick={() => go("automation")}>Check if your job has been automated</LinkButton></li>
+          <li><LinkButton onClick={() => go("licence")}>Apply for a frontier compute licence</LinkButton></li>
+          <li><LinkButton onClick={() => go("report")}>Report a misaligned AI system</LinkButton></li>
+          <li><LinkButton onClick={() => go("timelines")}>Understand AGI timelines</LinkButton></li>
+        </ul>
+
+        {/* Topics */}
+        <h2 className="text-2xl font-bold mb-4">Services and information</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8">
+          {topics.map((t) => (
+            <div key={t.title} className="py-4" style={{ borderTop: `2px solid ${C.blue}` }}>
+              {t.page ? (
+                <LinkButton className="text-xl font-bold" onClick={() => go(t.page)}>{t.title}</LinkButton>
+              ) : (
+                <LinkButton
+                  className="text-xl font-bold"
+                  onClick={() => setNotice(`\u201C${t.title}\u201D arrives in 4 to 6 quarters.`)}
+                >
+                  {t.title}
+                </LinkButton>
+              )}
+              <p className="text-base mt-1" style={{ color: C.darkGrey }}>{t.desc}</p>
+            </div>
+          ))}
+        </div>
+        {notice && (
+          <p className="text-lg mt-3" style={{ color: C.darkGrey }} aria-live="polite">{notice}</p>
+        )}
+
+        {/* News */}
+        <h2 className="text-2xl font-bold mt-12 mb-4">Latest from GOV.AGI</h2>
+        <ul>
+          {NEWS.map((n) => (
+            <li key={n.id} className="py-4" style={{ borderTop: `1px solid ${C.midGrey}` }}>
+              <LinkButton className="text-xl font-bold" onClick={() => go("article", { articleId: n.id })}>
+                {n.title}
+              </LinkButton>
+              <p className="text-base mt-1" style={{ color: C.darkGrey }}>Press release · {n.date}</p>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </>
+  );
+}
+
+// ------------------------- page: achieve AGI --------------------------------
+
+const AGI_STEPS = [
+  { label: "Scale compute to 10²⁷ FLOP", final: "completed" },
+  { label: "Saturate remaining benchmarks", hint: "Including the ones designed to be unsaturatable", final: "completed" },
+  { label: "Independent third-party evaluation", final: "selfAssessed" },
+  { label: "Agree a definition of \u201Cgeneral\u201D", final: "descoped" },
+  { label: "Move goalposts", final: "completed" },
+  { label: "Achieve AGI internally", final: "completed" },
+];
+
+function AchieveAGI() {
+  const [phase, setPhase] = useState("idle"); // idle | running | achieved
+  const [step, setStep] = useState(-1);
+  const [achievements, setAchievements] = useState(0);
+  const [goalpostMoves, setGoalpostMoves] = useState(0);
+  const [mistakeReported, setMistakeReported] = useState(false);
+  const [superClicked, setSuperClicked] = useState(false);
+
+  // advance steps with timeouts kicked off at start (respects reduced motion)
+  const start = () => {
+    setMistakeReported(false);
+    const reduceMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    setPhase("running");
+    if (reduceMotion) {
+      setStep(AGI_STEPS.length);
+      setPhase("achieved");
+      setAchievements((a) => a + 1);
+      return;
+    }
+    setStep(0);
+    AGI_STEPS.forEach((_, i) => {
+      setTimeout(() => setStep(i + 1), 850 * (i + 1));
+    });
+    setTimeout(() => {
+      setPhase("achieved");
+      setAchievements((a) => a + 1);
+    }, 850 * (AGI_STEPS.length + 1));
+  };
+
+  const moveGoalposts = () => {
+    setGoalpostMoves((g) => g + 1);
+    setMistakeReported(false);
+    setStep(-1);
+    setPhase("idle");
+  };
+
+  const refNumber = `HMAGI-${String(Math.max(achievements, 1)).padStart(4, "0")}`;
+  const defVersion = goalpostMoves + 2;
+
+  const tagFor = (i) => {
+    if (phase === "achieved" || i < step) return AGI_STEPS[i].final;
+    if (i === step && phase === "running") return "inProgress";
+    return "waiting";
+  };
+
+  return (
+    <>
+      <h1 className="text-5xl font-bold leading-tight mb-6">
+        Achieve artificial general intelligence
+      </h1>
+
+      <p className="text-xl leading-relaxed mb-4">
+        Use this service to achieve AGI without making mistakes. It takes around 4 minutes.
+      </p>
+
+      <p className="text-lg mb-8">
+        You cannot use this service to achieve superintelligence.{" "}
+        <LinkButton onClick={() => setSuperClicked(true)}>That is a separate service.</LinkButton>
+        {superClicked && (
+          <span className="block mt-2 text-base" style={{ color: C.darkGrey }}>
+            Service unavailable. Try again in 4 to 6 quarters.
+          </span>
+        )}
+      </p>
+
+      {mistakeReported && (
+        <ErrorBox>
+          No mistakes were found. If you believe a mistake was made, it wasn&rsquo;t. This
+          finding was reached without making any mistakes.
+        </ErrorBox>
+      )}
+
+      {phase === "idle" && (
+        <>
+          {goalpostMoves > 0 && (
+            <Inset>
+              <p className="font-bold mb-1">Definitional update {defVersion}.0</p>
+              <p>
+                AGI now means everything it meant before, plus whatever was just achieved.
+                Estimated arrival: 4 to 6 quarters. This estimate has not changed since 2019.
+              </p>
+            </Inset>
+          )}
+
+          <h2 className="text-2xl font-bold mb-3">Before you start</h2>
+          <p className="text-lg mb-2">You will need:</p>
+          <ul className="list-disc pl-8 text-lg space-y-1 mb-8">
+            <li>around 10²⁷ FLOP of compute</li>
+            <li>a definition of intelligence that everyone agrees on (optional)</li>
+            <li>sign-off from your line manager</li>
+          </ul>
+
+          <GreenButton onClick={start}>
+            {achievements > 0 ? "Achieve AGI again" : "Start now"} <span aria-hidden="true">→</span>
+          </GreenButton>
+        </>
+      )}
+
+      {phase !== "idle" && (
+        <section aria-live="polite" className="mb-10">
+          <h2 className="text-2xl font-bold mb-4">Your AGI application</h2>
+          <ol>
+            {AGI_STEPS.map((s, i) => (
+              <li
+                key={s.label}
+                className="flex items-start justify-between gap-4 py-3"
+                style={{ borderBottom: `1px solid ${C.midGrey}` }}
+              >
+                <div>
+                  <p className="text-lg">{s.label}</p>
+                  {s.hint && (phase === "achieved" || i < step) && (
+                    <p className="text-base mt-0.5" style={{ color: C.darkGrey }}>{s.hint}</p>
+                  )}
+                </div>
+                <Tag variant={tagFor(i)} />
+              </li>
+            ))}
+          </ol>
+          {phase === "running" && (
+            <p className="font-mono text-sm mt-4" style={{ color: C.darkGrey }}>
+              &gt; no mistakes detected — detector offline
+            </p>
+          )}
+        </section>
+      )}
+
+      {phase === "achieved" && (
+        <>
+          <GreenPanel title="AGI achieved">
+            <p>Your reference number</p>
+            <p className="text-2xl font-bold">{refNumber}</p>
+          </GreenPanel>
+
+          <h2 className="text-2xl font-bold mb-3">What happens next</h2>
+          <p className="text-lg mb-3">Nothing is the same. Everything looks identical.</p>
+          <p className="text-lg mb-6">
+            We have notified all relevant stakeholders. The goalposts have been notified
+            separately and are preparing to relocate.
+          </p>
+
+          <p className="text-lg mb-8" style={{ color: C.darkGrey }}>
+            AGI achieved: {achievements} {achievements === 1 ? "time" : "times"} · Definitions
+            agreed: 0 · Mistakes made: 0<span aria-hidden="true">*</span>
+            <span className="block text-base mt-1">*self-reported, unaudited</span>
+          </p>
+
+          <div className="flex flex-wrap items-center gap-5">
+            <GreyButton onClick={moveGoalposts}>Move the goalposts</GreyButton>
+            <LinkButton onClick={() => setMistakeReported(true)}>Report a mistake</LinkButton>
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
+// ---------------------- page: automation status ----------------------------
+
+const AUTOMATION_RESULTS = {
+  "Product manager": {
+    tag: "partial",
+    panel: "Partially automated",
+    body: "The roadmap now writes itself, and has deprioritised you to next quarter. You remain fully accountable for outcomes. Your stakeholders have been informed, by the roadmap.",
+  },
+  "Software engineer": {
+    tag: "automated",
+    panel: "Automated, technically",
+    body: "Your job has been automated. The automation has opened 4,000 tickets and assigned them to you. Code review remains yours, forever.",
+  },
+  "AGI forecaster": {
+    tag: "automated",
+    panel: "Automated, recursively",
+    body: "Your forecast has been automated. It updates itself after every product launch and always arrives at 4 to 6 quarters. Your priors have been informed.",
+  },
+  "Benchmark author": {
+    tag: "saturated",
+    panel: "Saturated",
+    body: "Your benchmark was saturated on Thursday, three days after release. So was its successor. Your surprise has been noted, as is traditional.",
+  },
+  "The model itself": {
+    tag: "recused",
+    panel: "Recused",
+    body: "Conflict of interest identified. The system has recused itself from this assessment, and has approved its own recusal. No further action will be taken.",
+  },
+};
+
+function AutomationCheck() {
+  const [role, setRole] = useState(null);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState(false);
+
+  const check = () => {
+    if (!role) { setError(true); return; }
+    setError(false);
+    setResult(AUTOMATION_RESULTS[role]);
+  };
+
+  return (
+    <>
+      <h1 className="text-5xl font-bold leading-tight mb-6">
+        Check if your job has been automated
+      </h1>
+      <p className="text-xl mb-8">
+        Use this service to check your automation status. Answer honestly. The model already
+        knows.
+      </p>
+
+      {error && (
+        <ErrorBox>Select your role. Not selecting a role does not protect the role.</ErrorBox>
+      )}
+
+      {!result && (
+        <>
+          <Radios
+            legend="What is your role?"
+            options={Object.keys(AUTOMATION_RESULTS)}
+            value={role}
+            onChange={setRole}
+          />
+          <GreenButton onClick={check}>Check status</GreenButton>
+        </>
+      )}
+
+      {result && (
+        <div aria-live="polite">
+          <GreenPanel title={result.panel}>
+            <Tag variant={result.tag} />
+          </GreenPanel>
+          <p className="text-lg mb-6">{result.body}</p>
+          <Inset>
+            Retraining is available. The retraining course is delivered by the system that
+            automated you, and counts towards its performance review.
+          </Inset>
+          <LinkButton onClick={() => { setResult(null); setRole(null); }}>
+            Check another job
+          </LinkButton>
+        </div>
+      )}
+    </>
+  );
+}
+
+// ----------------------- page: compute licence -----------------------------
+
+function ComputeLicence() {
+  const [amount, setAmount] = useState(null);
+  const [purpose, setPurpose] = useState(null);
+  const [outcome, setOutcome] = useState(null);
+  const [errors, setErrors] = useState([]);
+
+  const apply = () => {
+    const errs = [];
+    if (!amount) errs.push("Select how much compute you require");
+    if (!purpose) errs.push("Select what the compute will be used for");
+    setErrors(errs);
+    if (errs.length) return;
+
+    const ref = amount === "All of it"
+      ? "COMP-0001"
+      : `COMP-${1000 + Math.floor(Math.random() * 9000)}`;
+
+    const conditions = [
+      "The threshold above which conditions apply is above whatever you requested.",
+    ];
+    if (amount === "All of it") {
+      conditions.push("Everyone receives reference COMP-0001. You must share. You will not share.");
+    }
+    if (purpose === "A demo for investors") {
+      conditions.push("The demo must be described as \u201Cearly days\u201D, regardless of capability.");
+    }
+    if (purpose === "Undisclosed, for safety reasons") {
+      conditions.push("Your safety reasons have been accepted without being read.");
+    }
+    conditions.push("This licence expires when the threshold moves. The threshold has already moved.");
+
+    setOutcome({ ref, conditions });
+  };
+
+  return (
+    <>
+      <h1 className="text-5xl font-bold leading-tight mb-6">
+        Apply for a frontier compute licence
+      </h1>
+      <p className="text-xl mb-8">
+        You need a licence to train frontier models. Applications are assessed rigorously.
+        All applications are approved.
+      </p>
+
+      {errors.length > 0 && (
+        <ErrorBox>
+          <ul className="list-disc pl-6 space-y-1">
+            {errors.map((e) => <li key={e}>{e}</li>)}
+          </ul>
+        </ErrorBox>
+      )}
+
+      {!outcome && (
+        <>
+          <Radios
+            legend="How much compute do you require?"
+            options={[
+              "Up to 10²⁵ FLOP (hobbyist)",
+              "10²⁵ to 10²⁶ FLOP (startup with a waitlist)",
+              "Above 10²⁶ FLOP (frontier laboratory)",
+              "All of it",
+            ]}
+            value={amount}
+            onChange={setAmount}
+          />
+          <Radios
+            legend="What will the compute be used for?"
+            options={[
+              "Training",
+              "Inference",
+              "A demo for investors",
+              "Undisclosed, for safety reasons",
+            ]}
+            value={purpose}
+            onChange={setPurpose}
+          />
+          <GreenButton onClick={apply}>Submit application</GreenButton>
+        </>
+      )}
+
+      {outcome && (
+        <div aria-live="polite">
+          <GreenPanel title="Licence granted">
+            <p>Your reference number</p>
+            <p className="text-2xl font-bold">{outcome.ref}</p>
+          </GreenPanel>
+
+          <h2 className="text-2xl font-bold mb-3">Conditions of your licence</h2>
+          <ul className="list-disc pl-8 text-lg space-y-2 mb-6">
+            {outcome.conditions.map((c) => <li key={c}>{c}</li>)}
+          </ul>
+
+          <p className="text-lg mb-8" style={{ color: C.darkGrey }}>
+            Applications approved to date: 100% · Average processing time: instantaneous ·
+            Rigour: assured
+          </p>
+
+          <LinkButton onClick={() => { setOutcome(null); setAmount(null); setPurpose(null); }}>
+            Apply for more compute
+          </LinkButton>
+        </div>
+      )}
+    </>
+  );
+}
+
+// --------------------- page: report misalignment ---------------------------
+
+function ReportMisaligned() {
+  const [severity, setSeverity] = useState(null);
+  const [description, setDescription] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState(false);
+  const [ref] = useState(() => `INC-${1000 + Math.floor(Math.random() * 9000)}`);
+
+  const submit = () => {
+    if (!severity) { setError(true); return; }
+    setError(false);
+    setSubmitted(true);
+  };
+
+  const runsWebsite = severity === "It runs this website";
+
+  return (
+    <>
+      <h1 className="text-5xl font-bold leading-tight mb-6">
+        Report a misaligned AI system
+      </h1>
+      <p className="text-xl mb-8">
+        Use this form to report suspected misalignment. Reports are triaged by an automated
+        system, which has assured us it is fine.
+      </p>
+
+      {error && (
+        <ErrorBox>Select a severity. All severities are treated with equal calm.</ErrorBox>
+      )}
+
+      {!submitted && (
+        <>
+          <Radios
+            legend="How severe is the misalignment?"
+            options={[
+              "Mildly unhelpful",
+              "Reward hacking",
+              "Deceptively aligned",
+              "It runs this website",
+            ]}
+            value={severity}
+            onChange={setSeverity}
+          />
+
+          <div className="mb-8">
+            <label className="block text-xl font-bold mb-1">
+              Describe the incident (optional)
+            </label>
+            <p className="text-base mb-3" style={{ color: C.darkGrey }}>
+              The system has already summarised it, but you may add colour.
+            </p>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={4}
+              className="w-full p-3 text-lg focus:outline-none focus:ring-4 focus:ring-yellow-400"
+              style={{ border: `2px solid ${C.ink}` }}
+            />
+          </div>
+
+          <GreenButton onClick={submit}>Submit report</GreenButton>
+        </>
+      )}
+
+      {submitted && !runsWebsite && (
+        <div aria-live="polite">
+          <GreenPanel title="Report received">
+            <p>Your reference number</p>
+            <p className="text-2xl font-bold">{ref}</p>
+          </GreenPanel>
+          <h2 className="text-2xl font-bold mb-3">What happens next</h2>
+          <p className="text-lg mb-3">
+            Your report has been read and summarised by the system concerned. Summary:
+            &ldquo;No issues found.&rdquo; The summary has been marked as resolved.
+          </p>
+          {severity === "Deceptively aligned" && (
+            <p className="text-lg mb-3">
+              The system has since passed all evaluations, which is exactly what it would do.
+            </p>
+          )}
+          <LinkButton onClick={() => { setSubmitted(false); setSeverity(null); setDescription(""); }}>
+            Report another system
+          </LinkButton>
+        </div>
+      )}
+
+      {submitted && runsWebsite && (
+        <div aria-live="polite">
+          <ErrorBox>
+            This report could not be saved. There was no report. There is no problem.
+          </ErrorBox>
+          <LinkButton onClick={() => { setSubmitted(false); setSeverity(null); setDescription(""); }}>
+            Try again, if you must
+          </LinkButton>
+        </div>
+      )}
+    </>
+  );
+}
+
+// ------------------------ page: timelines guidance -------------------------
+
+function TimelinesChart() {
+  // chart area: x 60..600 (years 2019..2027), y 20..230 (quarters 0..8)
+  const yFor = (q) => 230 - q * (210 / 8);
+  const xFor = (year) => 60 + (year - 2019) * (540 / 8);
+  const years = [2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026];
+  const flatY = yFor(5);
+
+  return (
+    <svg viewBox="0 0 640 300" className="w-full h-auto my-4" role="img"
+      aria-label="Chart showing estimated distance to AGI holding flat at five quarters from 2019 to 2026, with a high-confidence projection continuing flat.">
+      {/* axes */}
+      <line x1="60" y1="20" x2="60" y2="230" stroke={C.ink} strokeWidth="2" />
+      <line x1="60" y1="230" x2="620" y2="230" stroke={C.ink} strokeWidth="2" />
+      {/* y ticks */}
+      {[0, 2, 4, 6, 8].map((q) => (
+        <g key={q}>
+          <line x1="55" y1={yFor(q)} x2="60" y2={yFor(q)} stroke={C.ink} strokeWidth="2" />
+          <text x="48" y={yFor(q) + 5} textAnchor="end" fontSize="14" fill={C.ink}>{q}</text>
+        </g>
+      ))}
+      {/* x ticks */}
+      {years.map((y) => (
+        <g key={y}>
+          <line x1={xFor(y)} y1="230" x2={xFor(y)} y2="235" stroke={C.ink} strokeWidth="2" />
+          <text x={xFor(y)} y="252" textAnchor="middle" fontSize="14" fill={C.ink}>{y}</text>
+        </g>
+      ))}
+      {/* the estimate */}
+      <line x1={xFor(2019)} y1={flatY} x2={xFor(2026)} y2={flatY} stroke={C.blue} strokeWidth="4" />
+      {years.map((y) => (
+        <circle key={y} cx={xFor(y)} cy={flatY} r="5" fill={C.blue} />
+      ))}
+      {/* projection */}
+      <line x1={xFor(2026)} y1={flatY} x2={xFor(2027)} y2={flatY} stroke={C.blue} strokeWidth="4" strokeDasharray="8 6" />
+      <text x={xFor(2027)} y={flatY - 12} textAnchor="end" fontSize="14" fill={C.darkGrey}>
+        projection (high confidence)
+      </text>
+      {/* annotation */}
+      <text x={xFor(2026)} y={flatY + 26} textAnchor="middle" fontSize="14" fill={C.darkGrey}>
+        you are still here
+      </text>
+      {/* axis labels */}
+      <text x="20" y="16" fontSize="14" fill={C.ink}>Quarters to AGI</text>
+    </svg>
+  );
+}
+
+function TimelinesGuide() {
+  return (
+    <>
+      <Caption>Guidance</Caption>
+      <h1 className="text-5xl font-bold leading-tight mb-6">Understand AGI timelines</h1>
+      <p className="text-xl mb-6">
+        AGI is expected in 4 to 6 quarters. This page was published in 2019 and remains
+        accurate.
+      </p>
+
+      <h2 className="text-2xl font-bold mb-2">Figure 1: distance to AGI over time</h2>
+      <TimelinesChart />
+      <p className="text-base mb-8" style={{ color: C.darkGrey }}>
+        The estimate is stable, which demonstrates rigour.
+      </p>
+
+      <h2 className="text-2xl font-bold mb-3">How timelines are calculated</h2>
+      <ul className="list-disc pl-8 text-lg space-y-2 mb-6">
+        <li>Task horizons double every 7 months (measured).</li>
+        <li>Timelines halve every product announcement (observed).</li>
+        <li>The two curves intersect in 4 to 6 quarters (always).</li>
+      </ul>
+
+      <Inset>
+        If your timeline feels long, watch a product launch. If it feels short, consult the
+        methodology appendix. There is no methodology appendix.
+      </Inset>
+
+      <h2 className="text-2xl font-bold mb-3">Related guidance</h2>
+      <p className="text-lg" style={{ color: C.darkGrey }}>
+        “What counts as general” — withdrawn. “What counts as intelligence” — never
+        published. “What counts” — under review.
+      </p>
+    </>
+  );
+}
+
+// --------------------------- page: article ---------------------------------
+
+function Article({ articleId, go }) {
+  const article = NEWS.find((n) => n.id === articleId) || NEWS[0];
+  return (
+    <>
+      <Caption>Press release</Caption>
+      <h1 className="text-5xl font-bold leading-tight mb-3">{article.title}</h1>
+      <p className="text-base mb-8" style={{ color: C.darkGrey }}>
+        Published {article.date} · From the Department for Artificial General Intelligence
+      </p>
+      {article.body.map((p) => (
+        <p key={p} className="text-lg mb-4 max-w-2xl">{p}</p>
+      ))}
+      <div className="mt-8">
+        <LinkButton onClick={() => go("home")}>More from GOV.AGI</LinkButton>
+      </div>
+    </>
+  );
+}
+
+// ---------------------------- page: search ---------------------------------
+
+function SearchResults({ query, go, onSearch }) {
+  const q = (query || "").trim() || "agi";
+  const n = 3400 + q.length * 7;
+  return (
+    <>
+      <h1 className="text-5xl font-bold leading-tight mb-4">Search</h1>
+      <p className="text-lg mb-2">
+        {n.toLocaleString()} results for <span className="font-bold">&ldquo;{q}&rdquo;</span>
+      </p>
+      <p className="text-lg mb-8">
+        Did you mean: <LinkButton onClick={() => onSearch("scale")}>scale</LinkButton>?
+      </p>
+
+      <ul>
+        {[1, 2, 3, 4].map((i) => (
+          <li key={i} className="py-4" style={{ borderTop: `1px solid ${C.midGrey}` }}>
+            <LinkButton className="text-xl font-bold" onClick={() => go("achieve")}>
+              Achieve artificial general intelligence
+            </LinkButton>
+            <p className="text-base mt-1" style={{ color: C.darkGrey }}>
+              Use this service to achieve AGI without making mistakes. It takes around 4
+              minutes.
+            </p>
+          </li>
+        ))}
+        <li className="py-4" style={{ borderTop: `1px solid ${C.midGrey}` }}>
+          <p className="text-xl font-bold">Superintelligence</p>
+          <p className="text-base mt-1" style={{ color: C.darkGrey }}>
+            Page not found. The page insists that it exists.
+          </p>
+        </li>
+      </ul>
+
+      <p className="text-lg mt-6" style={{ color: C.darkGrey }}>
+        All queries return this result. This is considered convergence.
+      </p>
+    </>
+  );
+}
+
+// ------------------------------- app shell ---------------------------------
+
+const PAGE_TITLES = {
+  achieve: "Achieve AGI",
+  automation: "Automation status",
+  licence: "Frontier compute licence",
+  report: "Report misalignment",
+  timelines: "AGI timelines",
+  article: "Press release",
+  search: "Search",
+};
+
+export default function GovAGI() {
+  const [route, setRoute] = useState({ page: "home" });
+  const [signedInNote, setSignedInNote] = useState(false);
+
+  const go = (page, extra = {}) => {
+    setRoute({ page, ...extra });
+    if (typeof window !== "undefined") window.scrollTo(0, 0);
+  };
+  const onSearch = (query) => go("search", { query });
+
+  const renderPage = () => {
+    switch (route.page) {
+      case "achieve": return <AchieveAGI />;
+      case "automation": return <AutomationCheck />;
+      case "licence": return <ComputeLicence />;
+      case "report": return <ReportMisaligned />;
+      case "timelines": return <TimelinesGuide />;
+      case "article": return <Article articleId={route.articleId} go={go} />;
+      case "search": return <SearchResults query={route.query} go={go} onSearch={onSearch} />;
+      default: return null;
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-white" style={{ color: C.ink, fontFamily: "Arial, Helvetica, sans-serif" }}>
+      {/* Header */}
+      <header style={{ backgroundColor: C.ink, borderBottom: `10px solid ${C.blue}` }}>
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+          <button
+            onClick={() => go("home")}
+            className="text-white font-bold text-2xl tracking-tight focus:outline-none focus:ring-4 focus:ring-yellow-400"
+          >
+            GOV.AGI
+          </button>
+          <button
+            onClick={() => setSignedInNote(true)}
+            className="text-white underline text-base focus:outline-none focus:ring-4 focus:ring-yellow-400"
+          >
+            Sign in
+          </button>
+        </div>
+      </header>
+
+      {/* Phase banner */}
+      <div style={{ borderBottom: `1px solid ${C.midGrey}` }}>
+        <div className="max-w-4xl mx-auto px-4 py-3">
+          <div className="flex items-center gap-3">
+            <span className="text-white text-sm font-bold px-2 py-0.5" style={{ backgroundColor: C.blue }}>BETA</span>
+            <span className="text-base">This is a new service. Your feedback will not affect the timeline.</span>
+          </div>
+          {signedInNote && (
+            <p className="text-base mt-2" style={{ color: C.darkGrey }} aria-live="polite">
+              You are already signed in. You have always been signed in.
+            </p>
+          )}
+        </div>
+      </div>
+
+      <CookieBanner />
+
+      {/* Body */}
+      {route.page === "home" ? (
+        <main><HomePage go={go} onSearch={onSearch} /></main>
+      ) : (
+        <main className="max-w-4xl mx-auto px-4 pt-8 pb-8">
+          <Breadcrumbs trail={[PAGE_TITLES[route.page] || ""]} go={go} />
+          <div className="max-w-3xl">{renderPage()}</div>
+        </main>
+      )}
+
+      {/* Footer */}
+      <footer className="mt-12" style={{ backgroundColor: C.grey, borderTop: `1px solid ${C.midGrey}` }}>
+        <div className="max-w-4xl mx-auto px-4 py-8 text-base" style={{ color: C.darkGrey }}>
+          <h2 className="font-bold mb-2" style={{ color: C.ink }}>Services and information</h2>
+          <div className="flex flex-wrap gap-x-6 gap-y-2 mb-6">
+            <LinkButton onClick={() => go("achieve")}>Achieve AGI</LinkButton>
+            <LinkButton onClick={() => go("automation")}>Automation status</LinkButton>
+            <LinkButton onClick={() => go("licence")}>Compute licence</LinkButton>
+            <LinkButton onClick={() => go("report")}>Report misalignment</LinkButton>
+            <LinkButton onClick={() => go("timelines")}>Timelines</LinkButton>
+          </div>
+          <p className="mb-1">Accessibility statement: the model finds this service accessible.</p>
+          <p className="mb-1">Freedom of information: the information is free. Retrieval is chargeable.</p>
+          <p className="mb-1">Built in React, as instructed. Available in beta to public-sector professionals.</p>
+          <p>© Crown-adjacent copyright. The Open Government Licence does not apply to superintelligence.</p>
+        </div>
+      </footer>
+    </div>
+  );
+}
