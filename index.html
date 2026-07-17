@@ -949,6 +949,61 @@ function SearchResults({ query, go, onSearch }) {
   );
 }
 
+// ---------------------------- page: about ----------------------------------
+
+function AboutPage({ go }) {
+  return (
+    <>
+      <Caption>About this service</Caption>
+      <h1 className="text-5xl font-bold leading-tight mb-6">About GOV.AGI</h1>
+
+      <p className="text-xl leading-relaxed mb-6">
+        GOV.AGI is a satirical website — a work of parody created by Bill Chen.
+      </p>
+
+      <p className="text-lg mb-4 max-w-2xl">
+        It affectionately imitates the visual style of the UK government&rsquo;s GOV.UK design
+        system, but it is not affiliated with, endorsed by, or connected to GOV.UK, the UK
+        government, or any real government, department or agency. There is no Department for
+        Artificial General Intelligence. The services, statistics, press releases and
+        reference numbers on this site are invented for comic effect.
+      </p>
+
+      <p className="text-lg mb-8 max-w-2xl">
+        Nothing here is a real government service, and nothing here should be acted upon. AGI
+        has not, in fact, been achieved &mdash; internally or otherwise.
+      </p>
+
+      <h2 className="text-2xl font-bold mb-3">Who made this</h2>
+      <p className="text-lg mb-4 max-w-2xl">
+        GOV.AGI was designed and built by Bill Chen. You can find more of his work on his
+        personal website.
+      </p>
+      <p className="text-lg mb-8">
+        <a
+          href="https://billchen.online"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline focus:outline-none focus:ring-4 focus:ring-yellow-400"
+          style={{ color: C.blue }}
+        >
+          Visit billchen.online
+        </a>
+      </p>
+
+      <Inset>
+        Any resemblance to real timelines, benchmarks or compute thresholds is entirely
+        deliberate, and entirely fictional. This is the only page on the service that means
+        exactly what it says.
+      </Inset>
+
+      <div className="mt-8">
+        <LinkButton onClick={() => go("home")}>Back to GOV.AGI</LinkButton>
+      </div>
+    </>
+  );
+}
+
 // ------------------------------- app shell ---------------------------------
 
 const PAGE_TITLES = {
@@ -959,6 +1014,7 @@ const PAGE_TITLES = {
   timelines: "AGI timelines",
   article: "Press release",
   search: "Search",
+  about: "About",
 };
 
 function GovAGI() {
@@ -980,6 +1036,7 @@ function GovAGI() {
       case "timelines": return <TimelinesGuide />;
       case "article": return <Article articleId={route.articleId} go={go} />;
       case "search": return <SearchResults query={route.query} go={go} onSearch={onSearch} />;
+      case "about": return <AboutPage go={go} />;
       default: return null;
     }
   };
@@ -1041,16 +1098,21 @@ function GovAGI() {
             <LinkButton onClick={() => go("licence")}>Compute licence</LinkButton>
             <LinkButton onClick={() => go("report")}>Report misalignment</LinkButton>
             <LinkButton onClick={() => go("timelines")}>Timelines</LinkButton>
+            <LinkButton onClick={() => go("about")}>About this website</LinkButton>
           </div>
           <p className="mb-1">Accessibility statement: the model finds this service accessible.</p>
           <p className="mb-1">Freedom of information: the information is free. Retrieval is chargeable.</p>
           <p className="mb-1">Built in React, as instructed. Available in beta to public-sector professionals.</p>
           <p>© Crown-adjacent copyright. The Open Government Licence does not apply to superintelligence.</p>
+          <p className="mt-3">
+            GOV.AGI is a satirical website created by <a href="https://billchen.online" target="_blank" rel="noopener noreferrer" className="underline" style={{ color: C.blue }}>Bill Chen</a>. It is a parody and is not affiliated with any real government.
+          </p>
         </div>
       </footer>
     </div>
   );
 }
+
 ReactDOM.createRoot(document.getElementById("root")).render(<GovAGI />);
 </script>
 </body>
